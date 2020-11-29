@@ -1,0 +1,16 @@
+{
+  "apps": [{
+    "name": "vue-im-server",
+    "script": "dist/app.js",
+    "cwd": "your project dir",
+    "exec_mode": "fork",
+    "max_memory_restart": "1G",
+    "autorestart": true,
+    "instance_var": "INSTANCE_ID",
+    "node_args": [],
+    "args": [],
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }]
+}
