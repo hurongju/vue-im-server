@@ -47,7 +47,7 @@ export default class SocketService {
 
   join (username, room, cb) {
     if (cluster.isWorker) {
-      process.on('message', function (msg) {
+      process.once('message', (msg) => {
         logger.info(`【SocketService join】【worker进程${process.pid}接受到消息】`, msg)
         let msgObj = null
         try {

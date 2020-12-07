@@ -8,6 +8,7 @@ import logger from '../common/logger'
 import cons from '../constants'
 import to from 'await-to-js'
 import SocketService from './socket'
+import { v4 as uuidv4 } from 'uuid'
 
 // 同意加人，更新加人记录表，插入会话表、会话成员表、聊天记录表
 async function agree ({ fromId, fromName, id, name, uid }) {
@@ -143,7 +144,7 @@ export default class UserService {
     logger.info('【UserService agreeAdd】【入库成功socket开始加入房间】', result.roomId)
     const socketServiceInstance = new SocketService()
     const [addErr, data] = await to(new Promise((resolve, reject) => {
-      socketServiceInstance.join([fromName, name], result.roomId, function (err, data) {
+      socketServiceInstance.join([fromName, name], result.roomId, (err, data) => {
         if (err) {
           return reject(err)
         }
@@ -155,8 +156,10 @@ export default class UserService {
           name: result.name,
           type: cons.message.SYSTEM_MESSAGE,
           cmd: cons.message.AGREE_ADD_FRIEND_CMD,
-          from: cons.DEFAULT_SYSTEM_NAME
+          from: cons.DEFAULT_SYSTEM_NAME,
+          uuid: uuidv4()
         }
+        logger.info(`【往${cons.PREFIX_ROOM + result.roomId}房间发送加人消息】`, JSON.stringify(msgData))
         global.imCtx.emitter.of('/').to(cons.PREFIX_ROOM + result.roomId).emit('message', msgData)
         resolve(data)
       })
