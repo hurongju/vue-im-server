@@ -16,14 +16,14 @@ export default ({ app }) => {
   }
 
   app.all('*', function (req, res, next) { // 允许全部跨域
-    res.header('Access-Control-Allow-Headers', "Content-Type,Content-Length, Authorization,'Origin',Accept,X-Requested-With")
-    res.header('Access-Control-Allow-Origin', '*')
-    next()
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', '*')
+    res.setHeader('Access-Control-Allow-Headers', '*')
+    req.method === 'OPTIONS' ? res.status(204).end() : next()
   })
 
   app.use(function (req, res, next) { // 校验token
     const token = req.headers.authorization
-    logger.info('token :>> ', token)
     if (~config.whiteUrl.indexOf(req.url) || /\/static/.test(req.url)) {
       return next()
     }
