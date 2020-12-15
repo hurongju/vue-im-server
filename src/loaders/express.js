@@ -6,6 +6,7 @@ import config from '../config'
 import express from 'express'
 import logger from '../common/logger'
 import route from '../routes'
+import cors from 'cors'
 
 export default ({ app }) => {
   app.use(express.json())
@@ -15,12 +16,7 @@ export default ({ app }) => {
     app.use(express.static(config.resource.root)) // 代理静态资源，生产建议关闭，使用nginx
   }
 
-  app.all('*', function (req, res, next) { // 允许全部跨域
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', '*')
-    res.setHeader('Access-Control-Allow-Headers', '*')
-    req.method === 'OPTIONS' ? res.status(204).end() : next()
-  })
+  app.use(cors()) // 允许跨域
 
   app.use(function (req, res, next) { // 校验token
     const token = req.headers.authorization
