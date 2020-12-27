@@ -110,9 +110,9 @@ export default class AddInfoModel extends BaseModel {
         (
             SELECT b.name, c.id, b.avatar_url as avatarUrl, c.uid, row_number() over(PARTITION by name) as ranker FROM
             (
-              SELECT a.id,  a.from_id as uid FROM im_add_info as a  WHERE a.to_id = ? AND a.status = 1 AND a.add_status = 2
+              SELECT a.id,  a.from_id as uid FROM im_add_info as a  WHERE a.to_id = ? AND a.add_status = 2
               UNION ALL
-              SELECT a.id, a.to_id as uid FROM im_add_info as a  WHERE a.from_id = ? AND a.status = 1 AND a.add_status = 2
+              SELECT a.id, a.to_id as uid FROM im_add_info as a  WHERE a.from_id = ? AND a.add_status = 2
             ) as c
             LEFT JOIN im_user as b ON c.uid = b.id WHERE b.status = 1
         ) as d WHERE  d.ranker = 1
