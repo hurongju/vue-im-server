@@ -2,6 +2,19 @@ import BaseModel from './base'
 import cons from '../constants'
 
 export default class RoomModel extends BaseModel {
+  find ({ nameList }) {
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT room_id as roomId  FROM im_room WHERE `name` IN (?)'
+      this.conn.query(sql, [nameList], (err, results, fields) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(results)
+        }
+      })
+    })
+  }
+
   queryRoomList ({ username }) { // 查询聊天列表
     return new Promise((resolve, reject) => {
       const sql = `SELECT a.room_id as roomId, a.last_msg_time as lastMsgTime, a.last_msg as lastMsg,
@@ -45,12 +58,33 @@ export default class RoomModel extends BaseModel {
     })
   }
 
-  update ({ lastMsg, lastMsgTime, updateBy, roomId }) {
+  update ({ lastMsg, lastMsgTime, updateBy, roomId, status }) {
     return new Promise((resolve, reject) => {
-      this.conn.query('UPDATE `im_room` SET `last_msg_time` = ?, `last_msg` = ?, `update_time` = ?, `update_by` = ?  WHERE `room_id` = ? AND `status` = 1', [
+      let sql = 'UPDATE `im_room` SET `last_msg_time` = ?, `last_msg` = ?, `update_time` = ?, `update_by` = ?, `status` = 1  WHERE `room_id` = ?'
+      if (!status) {
+        sql += ' AND `status` = 1'
+      }
+      this.conn.query(sql, [
         lastMsgTime || Date.now(),
         lastMsg,
         lastMsgTime || Date.now(),
+        updateBy,
+        roomId
+      ], (err, results) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(results)
+        }
+      })
+    })
+  }
+
+  delete ({ updateBy, roomId }) {
+    const now = Date.now()
+    return new Promise((resolve, reject) => {
+      this.conn.query('UPDATE `im_room` SET `update_time` = ?, `update_by` = ?, `status` = 0  WHERE `room_id` = ?', [
+        now,
         updateBy,
         roomId
       ], (err, results) => {

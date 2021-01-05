@@ -33,7 +33,7 @@ async function agree ({ fromId, fromName, id, name, uid }) {
   if (addInfoData[0].addStatus > 1) {
     connection.release()
     logger.info('【UserService agree】【查找add_info表状态已更新】', JSON.stringify(addInfoData))
-    return Promise.resolve(0)
+    return Promise.resolve(cons.SUCCESS_CODE)
   }
   const [transactionErr] = await to(
     new Promise((resolve, reject) => {
@@ -51,13 +51,9 @@ async function agree ({ fromId, fromName, id, name, uid }) {
     return Promise.reject(transactionErr)
   }
   const addInfoRes = addInfoModel.updateAddStatus({ id, fromId, uid })
-  // 创建会话
-  const [roomInsertErr, roomIdObj] = await to(roomModel.insert({
-    name: JSON.stringify([name, fromName]),
-    lastMsg: content,
-    createBy: fromName,
-    createTime: now,
-    type: cons.message.SINGLE_ROOM
+  // 查找是否存在room表数据
+  let [roomInsertErr, roomIdObj] = await to(roomModel.find({
+    nameList: [JSON.stringify([name, fromName]), JSON.stringify([fromName, name])]
   }))
   if (roomInsertErr) {
     connection.rollback(function () {
@@ -65,33 +61,85 @@ async function agree ({ fromId, fromName, id, name, uid }) {
     })
     return Promise.reject(roomInsertErr)
   }
-  // 插入会话成员表
-  const roomMemberOneRes = roomMemberModel.insert({
-    roomId: roomIdObj.roomId,
-    userId: uid,
-    userName: name,
-    createBy: fromName
-  })
-  const roomMemberTwoRes = roomMemberModel.insert({
-    roomId: roomIdObj.roomId,
-    userId: fromId,
-    userName: fromName,
-    createBy: fromName
-  })
-  // 插入聊天记录表
-  const roomMsgRes = roomMsgModel.insert({
-    content: content,
-    senderId: fromId,
-    sender: fromName,
-    roomId: roomIdObj.roomId,
-    createTime: now
-  })
-  const [allErr] = await to(Promise.all([addInfoRes, roomMemberOneRes, roomMemberTwoRes, roomMsgRes]))
-  if (allErr) {
-    connection.rollback(function () {
-      connection.release()
+  if (roomIdObj.length > 0) { // 存在room表数据，更新room表数据
+    roomIdObj = {
+      roomId: roomIdObj[0].roomId,
+      lastMsgTime: now,
+      lastMsg: content,
+      name: JSON.stringify([name, fromName])
+    }
+    // 创建会话
+    const [roomUpdateErr] = await to(roomModel.update(
+      {
+        roomId: roomIdObj.roomId,
+        lastMsg: content,
+        updateBy: fromName,
+        lastMsgTime: now,
+        status: 1
+      }))
+    if (roomUpdateErr) {
+      connection.rollback(function () {
+        connection.release()
+      })
+      return Promise.reject(roomUpdateErr)
+    }
+    // 插入聊天记录表
+    const [roomMsgRes] = await to(roomMsgModel.insert({
+      content: content,
+      senderId: fromId,
+      sender: fromName,
+      roomId: roomIdObj.roomId,
+      createTime: now
+    }))
+    if (roomMsgRes) {
+      connection.rollback(function () {
+        connection.release()
+      })
+      return Promise.reject(roomMsgRes)
+    }
+  } else {
+    // 创建会话
+    [roomInsertErr, roomIdObj] = await to(roomModel.insert({
+      name: JSON.stringify([name, fromName]),
+      lastMsg: content,
+      createBy: fromName,
+      createTime: now,
+      type: cons.message.SINGLE_ROOM
+    }))
+    if (roomInsertErr) {
+      connection.rollback(function () {
+        connection.release()
+      })
+      return Promise.reject(roomInsertErr)
+    }
+    // 插入会话成员表
+    const roomMemberOneRes = roomMemberModel.insert({
+      roomId: roomIdObj.roomId,
+      userId: uid,
+      userName: name,
+      createBy: fromName
     })
-    return Promise.reject(allErr)
+    const roomMemberTwoRes = roomMemberModel.insert({
+      roomId: roomIdObj.roomId,
+      userId: fromId,
+      userName: fromName,
+      createBy: fromName
+    })
+    // 插入聊天记录表
+    const roomMsgRes = roomMsgModel.insert({
+      content: content,
+      senderId: fromId,
+      sender: fromName,
+      roomId: roomIdObj.roomId,
+      createTime: now
+    })
+    const [allErr] = await to(Promise.all([addInfoRes, roomMemberOneRes, roomMemberTwoRes, roomMsgRes]))
+    if (allErr) {
+      connection.rollback(function () {
+        connection.release()
+      })
+      return Promise.reject(allErr)
+    }
   }
   return new Promise((resolve, reject) => {
     connection.commit(function (err) {
@@ -130,13 +178,40 @@ export default class UserService {
     }
   }
 
+  async deleteFriend ({ id, uid, roomId, username }) {
+    const addInfoModel = new AddInfoModel()
+    const roomModel = new RoomModel()
+    const [updateUserInfoErr] = await to(addInfoModel.deleteFriend({ id, uid }))
+    if (updateUserInfoErr) {
+      logger.error('【UserService deleteFriend】【更新add_info表异常】', updateUserInfoErr)
+      throw new Error('更新失败')
+    }
+    const [updateRoomErr] = await to(roomModel.delete({ roomId, updateBy: username }))
+    if (updateRoomErr) {
+      logger.error('【UserService deleteFriend】【更新room表异常】', updateRoomErr)
+      throw new Error('更新失败')
+    }
+    // 发送删除好友socket消息
+    const msgData = {
+      roomId: roomId,
+      lastMsgTime: Date.now(),
+      lastMsg: `${username}删除了好友`,
+      type: cons.message.SYSTEM_MESSAGE,
+      cmd: cons.message.DELETE_FRIEND_CMD,
+      from: cons.DEFAULT_SYSTEM_NAME,
+      uuid: uuidv4()
+    }
+    const socketServiceInstance = new SocketService()
+    socketServiceInstance.sendMsg(msgData)
+  }
+
   async agreeAdd ({ fromId, fromName, id, name, uid }) {
     const [err, result] = await to(agree({ fromId, fromName, id, name, uid }))
     if (err) {
       logger.error('【UserService agreeAdd】【插入失败】', err)
       throw err
     }
-    if (result === 0) {
+    if (result === cons.SUCCESS_CODE) {
       logger.info('【UserService agreeAdd】【对方已经同意过了】')
       return result // 已经同意过了，直接返回
     }
@@ -159,8 +234,7 @@ export default class UserService {
           from: cons.DEFAULT_SYSTEM_NAME,
           uuid: uuidv4()
         }
-        logger.info(`【往${cons.PREFIX_ROOM + result.roomId}房间发送加人消息】`, JSON.stringify(msgData))
-        global.imCtx.emitter.of('/').to(cons.PREFIX_ROOM + result.roomId).emit('message', msgData)
+        socketServiceInstance.sendMsg(msgData)
         resolve(data)
       })
     }))

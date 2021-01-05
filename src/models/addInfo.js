@@ -1,10 +1,11 @@
 import BaseModel from './base'
+import cons from '../constants'
 
 export default class AddInfoModel extends BaseModel {
   findOne ({ toId, fromId }) {
     return new Promise((resolve, reject) => {
       this.conn.query(`SELECT \`id\`, \`add_status\` as addStatus from im_add_info
-        WHERE to_id = ? AND from_id = ? AND \`status\`=1`,
+        WHERE to_id = ? AND from_id = ?`,
       [toId, fromId], (err, results, fields) => {
         if (err) {
           reject(err)
@@ -43,7 +44,7 @@ export default class AddInfoModel extends BaseModel {
           console.log('updateAddStatuserr :>> ', err)
           reject(err)
         } else {
-          resolve(1)
+          resolve(cons.SUCCESS_CODE)
         }
       })
     })
@@ -51,19 +52,14 @@ export default class AddInfoModel extends BaseModel {
 
   update ({ updateTime, addStatus, id }) {
     return new Promise((resolve, reject) => {
-      let sql = 'UPDATE `im_add_info` SET `update_time` = ?'
-      const data = [updateTime || Date.now()]
-      if (addStatus) {
-        sql += ', `add_status` = ?'
-        data.push(addStatus)
-      }
-      sql += ' WHERE `id` = ?'
-      data.push(id)
+      const sql = 'UPDATE `im_add_info` SET `update_time` = ?, `status` = 1, `add_status` = ? WHERE `id` = ?'
+      const data = [updateTime || Date.now(), addStatus || 1, id]
+      data.push()
       this.conn.query(sql, data, (err, results) => {
         if (err) {
           reject(err)
         } else {
-          resolve(1)
+          resolve(cons.SUCCESS_CODE)
         }
       })
     })
@@ -83,7 +79,7 @@ export default class AddInfoModel extends BaseModel {
         if (err) {
           reject(err)
         } else {
-          resolve(1)
+          resolve(cons.SUCCESS_CODE)
         }
       })
     })
@@ -96,7 +92,7 @@ export default class AddInfoModel extends BaseModel {
         if (err) {
           reject(err)
         } else {
-          resolve(1)
+          resolve(cons.SUCCESS_CODE)
         }
       })
     })
@@ -133,6 +129,20 @@ export default class AddInfoModel extends BaseModel {
           resolve(results)
         }
       })
+    })
+  }
+
+  deleteFriend ({ id, uid }) {
+    return new Promise((resolve, reject) => {
+      const now = Date.now()
+      this.conn.query('UPDATE `im_add_info` SET `add_status` = 0, `update_time` = ? WHERE (`from_id` = ? AND `to_id` = ?) OR (`from_id` = ? AND `to_id` = ?)',
+        [now, id, uid, uid, id], (err, results) => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve(cons.SUCCESS_CODE)
+          }
+        })
     })
   }
 }

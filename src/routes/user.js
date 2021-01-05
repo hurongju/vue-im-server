@@ -54,6 +54,29 @@ export default (app) => {
     })
   })
 
+  router.post('/deleteFriend', async (req, res, next) => {
+    const { id, roomId } = req.body
+    if (!id || !roomId) {
+      logger.error('【route /user/deleteFriend】【删除好友参数异常】', `id: ${id}, roomId: ${roomId}`)
+      return res.json({
+        success: false,
+        code: 200,
+        message: '参数有误'
+      })
+    }
+    const userServiceInstance = new UserService()
+    try {
+      await userServiceInstance.deleteFriend({ id, roomId, uid: req.data.uid, username: req.data.name })
+    } catch (e) {
+      return next(e)
+    }
+    return res.json({
+      success: true,
+      message: '',
+      code: 200
+    })
+  })
+
   router.post('/addList', async (req, res, next) => {
     const { pageSize, lastTime } = req.body
     let data = []

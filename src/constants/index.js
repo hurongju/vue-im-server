@@ -10,5 +10,8 @@ export default {
   PREFIX_ROOM_HAND_SHAKE: '__PREFIX_ROOM_HAND_SHAKE__', // 新用户连接成功创建房间名前缀
   DEFAULT_SYSTEM_NAME: '[SYSTEM]', // 默认系统消息名称
   MASTER_PROCESS_NAME: 'master', // 主进程name
-  WORKER_PROCESS_NAME: 'worker' // worker进程name
+  WORKER_PROCESS_NAME: 'worker', // worker进程name
+  SUCCESS_CODE: 0, // 函数执行成功返回值
+  FAIL_CODE: 1, // 函数执行失败返回值
+  DEFAULT_SENDER_ID: 0 // 默认发送者ID(系统ID)
 }

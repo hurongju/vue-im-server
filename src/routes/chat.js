@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import logger from '../common/logger'
 import ChatService from '../services/chat'
+import cons from '../constants';
 
 const router = Router()
 
@@ -19,10 +20,19 @@ export default (app) => {
       return res.json({ success: false, message: '参数异常', code: 200 })
     }
     const chatServiceInstance = new ChatService()
+    let result = cons.SUCCESS_CODE
     try {
-      await chatServiceInstance.send({ content, type, roomId, toName, sendSocketId, name, uid })
+      result = await chatServiceInstance.send({ content, type, roomId, toName, sendSocketId, name, uid })
     } catch (e) {
       return next(e)
+    }
+    if (result === cons.FAIL_CODE) { // 会话不存在，前端提示已被好友删除
+      return res.json({
+        success: false,
+        data: result,
+        message: '好友不存在',
+        code: 200
+      })
     }
     return res.json({
       success: true,

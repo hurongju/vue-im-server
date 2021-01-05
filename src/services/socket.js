@@ -32,17 +32,22 @@ export default class SocketService {
   sendHandshake (socket, username) { // 初次登录发送欢迎语
     logger.info(`【SocketService sendHandshake】【socket发送欢迎语】${socket.meta.username} vChat团队欢迎你`)
     socket.join(cons.PREFIX_ROOM_HAND_SHAKE + username)
-    const now = Date.now()
-    global.imCtx.emitter.of('/').to(cons.PREFIX_ROOM_HAND_SHAKE + username).emit('message', {
+    const msgData = {
       from: cons.DEFAULT_ROOM_NAME,
       to: username,
       content: cons.DEFAULT_WELCOME_WORDS,
-      type: 0,
-      cmd: 1,
+      type: cons.message.SYSTEM_MESSAGE,
+      cmd: cons.message.WELCOME_WORD_CMD,
       roomId: username,
-      sendTime: now,
+      sendTime: Date.now(),
       uuid: uuidv4()
-    })
+    }
+    global.imCtx.emitter.of('/').to(cons.PREFIX_ROOM_HAND_SHAKE + username).emit('message', msgData)
+  }
+
+  sendMsg (msgData) { // 发送消息
+    logger.info(`【往${msgData.roomId}房间发送消息】`, JSON.stringify(msgData))
+    global.imCtx.emitter.of('/').to(cons.PREFIX_ROOM + msgData.roomId).emit('message', msgData)
   }
 
   join (username, room, cb) {
