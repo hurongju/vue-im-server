@@ -26,7 +26,7 @@ export default class SocketService {
         data: { username, sid }
       }))
     }
-    logger.info(`SocketService offline】【用户${username}已离线】`)
+    logger.info(`【SocketService offline】【用户${username}已离线】`)
   }
 
   sendHandshake (socket, username) { // 初次登录发送欢迎语

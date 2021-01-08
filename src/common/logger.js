@@ -9,7 +9,6 @@ log4js.configure({
   categories: {
     default: { appenders: ['dateFile', 'err'], level: 'debug' }
   },
-  disableClustering: true,
   pm2: true,
   pm2InstanceVar: 'INSTANCE_ID'
 })
